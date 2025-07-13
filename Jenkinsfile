@@ -109,7 +109,7 @@ pipeline {
                         sed -i 's|image: hemantsingh1023/easyshop-migration:.*|image: hemantsingh1023/easyshop-migration:${DOCKER_IMAGE_TAG}|' 12-migration-job.yaml
 
                         git add .
-                        git commit -m "Update image tags to ${DOCKER_IMAGE_TAG}"
+                        git diff --cached --quiet || git commit -m "Update image tags to ${DOCKER_IMAGE_TAG}"
                         git push https://$GITHUB_CREDENTIALS_USR:$GITHUB_CREDENTIALS_PSW@github.com/hemantTsingh/tws-e-commerce-app.git HEAD:${GIT_BRANCH}
                     """
                 }
