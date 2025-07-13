@@ -23,7 +23,7 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    clone("https://github.com/hemantTsingh/tws-e-commerce-app.git","master")
+                    git url: 'https://github.com/hemantTsingh/tws-e-commerce-app.git',branch: 'master', credentialsId: 'github')
                 }
             }
         }
