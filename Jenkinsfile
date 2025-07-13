@@ -38,8 +38,7 @@ pipeline {
             }
         }
         // Add other parallel stages like "Build Migration Image" here if needed
-    }
-}
+    
 
         //stage('Build Docker Images') {
             //parallel {
