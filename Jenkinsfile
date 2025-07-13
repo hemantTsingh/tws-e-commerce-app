@@ -27,21 +27,34 @@ pipeline {
                 }
             }
         }
-        
         stage('Build Docker Images') {
-            parallel {
-                stage('Build Main App Image') {
-                    steps {
-                        script {
-                            docker_build(
-                                imageName: env.DOCKER_IMAGE_NAME,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                dockerfile: 'Dockerfile',
-                                context: '.'
-                            )
-                        }
-                    }
+    parallel {
+        stage('Build Main App Image') {
+            steps {
+                script {
+                    def imageNameWithTag = "${env.DOCKER_IMAGE_NAME}:${env.DOCKER_IMAGE_TAG}"
+                    def appImage = docker.build(imageNameWithTag, "-f Dockerfile .")
                 }
+            }
+        }
+        // Add other parallel stages like "Build Migration Image" here if needed
+    }
+}
+
+        //stage('Build Docker Images') {
+            //parallel {
+                //stage('Build Main App Image') {
+                    //steps {
+                        //script {
+                        //    docker_build(
+                       //         imageName: env.DOCKER_IMAGE_NAME,
+                      //          imageTag: env.DOCKER_IMAGE_TAG,
+                     //           dockerfile: 'Dockerfile',
+                    //            context: '.'
+                   //         )
+                  //      }
+                 //   }
+                //}
                 
                 stage('Build Migration Image') {
                     steps {
