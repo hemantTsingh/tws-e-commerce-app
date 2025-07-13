@@ -105,8 +105,8 @@ pipeline {
 
                         cd kubernetes
 
-                        sed -i 's|image: hemantsingh1023/easyshop-app:.*|image: hemantsingh1023/easyshop-app:${DOCKER_IMAGE_TAG}|' deployment.yaml
-                        sed -i 's|image: hemantsingh1023/easyshop-migration:.*|image: hemantsingh1023/easyshop-migration:${DOCKER_IMAGE_TAG}|' migration.yaml
+                        sed -i 's|image: hemantsingh1023/easyshop-app:.*|image: hemantsingh1023/easyshop-app:${DOCKER_IMAGE_TAG}|' 08-easyshop-deployment.yaml
+                        sed -i 's|image: hemantsingh1023/easyshop-migration:.*|image: hemantsingh1023/easyshop-migration:${DOCKER_IMAGE_TAG}|' 12-migration-job.yaml
 
                         git add .
                         git commit -m "Update image tags to ${DOCKER_IMAGE_TAG}"
