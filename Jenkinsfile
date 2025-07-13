@@ -98,24 +98,18 @@ pipeline {
         stage('Update Kubernetes Manifests') {
     steps {
         script {
-            sh 
-                """
+            sh '''
                 git config --global user.name 'hemantTsingh'
                 git config --global user.email 'hemantsingh1023@gmail.com'
 
-                # Update image tags in deployment YAMLs
-                sed -i 's|image: hemantsingh1023/easyshop-app:.*|image: hemantsingh1023/easyshop-app:${DOCKER_IMAGE_TAG}|' kubernetes/08-easyshop-deployment.yaml
-                sed -i 's|image: hemantsingh1023/easyshop-migration:.*|image: hemantsingh1023/easyshop-migration:${DOCKER_IMAGE_TAG}|' kubernetes/12-migration-job.yaml
+                sed -i 's|image: hemantsingh1023/easyshop-app:.*|image: hemantsingh1023/easyshop-app:'"$DOCKER_IMAGE_TAG"'|' kubernetes/08-easyshop-deployment.yaml
+                sed -i 's|image: hemantsingh1023/easyshop-migration:.*|image: hemantsingh1023/easyshop-migration:'"$DOCKER_IMAGE_TAG"'|' kubernetes/12-migration-job.yaml
 
-                # Stage only the files you've changed
                 git add kubernetes/08-easyshop-deployment.yaml kubernetes/12-migration-job.yaml
-
-                # Only commit if there is something to commit
                 git diff --cached --quiet || git commit -m "Update image tags to ${DOCKER_IMAGE_TAG}"
 
-                # Push back to the same branch
                 git push https://$GITHUB_CREDENTIALS_USR:$GITHUB_CREDENTIALS_PSW@github.com/hemantTsingh/tws-e-commerce-app.git HEAD:${GIT_BRANCH}
-            """
+            '''
                 }
             }
         }
