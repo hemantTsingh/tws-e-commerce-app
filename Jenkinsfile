@@ -113,5 +113,18 @@ pipeline {
                 }
             }
         }
+
+
+stage('Deploy to Kubernetes') {
+    steps {
+        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+            withEnv(["KUBECONFIG=$KUBECONFIG_FILE"]) {
+                sh 'kubectl apply -f kubernetes/'
+            }
+        }
+    } 
+}
+
+
     }
 }
