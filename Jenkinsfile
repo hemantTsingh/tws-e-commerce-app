@@ -1,14 +1,14 @@
 @Library('Shared') _
 
 pipeline {
-    agent any
+    agent {'worker-root'}
     
     environment {
         // Update the main app image name to match the deployment file
-        DOCKER_IMAGE_NAME = 'trainwithshubham/easyshop-app'
-        DOCKER_MIGRATION_IMAGE_NAME = 'trainwithshubham/easyshop-migration'
+        DOCKER_IMAGE_NAME = 'hemantsingh1023/easyshop-app'
+        DOCKER_MIGRATION_IMAGE_NAME = 'hemantsingh1023/easyshop-migration'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
-        GITHUB_CREDENTIALS = credentials('github-credentials')
+        GITHUB_CREDENTIALS = credentials('github')
         GIT_BRANCH = "master"
     }
     
@@ -24,7 +24,7 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    clone("https://github.com/LondheShubham153/tws-e-commerce-app.git","master")
+                    clone("https://github.com/hemantTsingh/tws-e-commerce-app.git","master")
                 }
             }
         }
@@ -86,7 +86,7 @@ pipeline {
                             docker_push(
                                 imageName: env.DOCKER_IMAGE_NAME,
                                 imageTag: env.DOCKER_IMAGE_TAG,
-                                credentials: 'docker-hub-credentials'
+                                credentials: 'a43155be-603e-4753-8637-3f9ef04cbef2'
                             )
                         }
                     }
@@ -98,7 +98,7 @@ pipeline {
                             docker_push(
                                 imageName: env.DOCKER_MIGRATION_IMAGE_NAME,
                                 imageTag: env.DOCKER_IMAGE_TAG,
-                                credentials: 'docker-hub-credentials'
+                                credentials: 'a43155be-603e-4753-8637-3f9ef04cbef2'
                             )
                         }
                     }
@@ -113,9 +113,9 @@ pipeline {
                     update_k8s_manifests(
                         imageTag: env.DOCKER_IMAGE_TAG,
                         manifestsPath: 'kubernetes',
-                        gitCredentials: 'github-credentials',
-                        gitUserName: 'Jenkins CI',
-                        gitUserEmail: 'shubhamnath5@gmail.com'
+                        gitCredentials: 'github',
+                        gitUserName: 'hemantTsingh',
+                        gitUserEmail: 'hemantsingh1023@gmail.com'
                     )
                 }
             }
