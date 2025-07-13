@@ -1,5 +1,3 @@
-@Library('Shared') _
-
 pipeline {
     agent {'worker-root'}
     
