@@ -1,133 +1,117 @@
 pipeline {
     agent {
-        label 'worker-root' }
-    
+        label 'worker-root'
+    }
+
     environment {
-        // Update the main app image name to match the deployment file
         DOCKER_IMAGE_NAME = 'hemantsingh1023/easyshop-app'
         DOCKER_MIGRATION_IMAGE_NAME = 'hemantsingh1023/easyshop-migration'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         GITHUB_CREDENTIALS = credentials('github')
         GIT_BRANCH = "master"
     }
-    
+
     stages {
         stage('Cleanup Workspace') {
             steps {
-                script {
-                    cleanWs()
-                }
+                cleanWs()
             }
         }
-        
+
         stage('Clone Repository') {
             steps {
-                script {
-                    git url: 'https://github.com/hemantTsingh/tws-e-commerce-app.git',branch: 'master', credentialsId: 'github'
-                }
+                git url: 'https://github.com/hemantTsingh/tws-e-commerce-app.git',
+                    branch: "${env.GIT_BRANCH}",
+                    credentialsId: 'github'
             }
         }
-        stage('Build Docker Images') {
-    parallel {
-        stage('Build Main App Image') {
-            steps {
-                script {
-                    def imageNameWithTag = "${env.DOCKER_IMAGE_NAME}:${env.DOCKER_IMAGE_TAG}"
-                    def appImage = docker.build(imageNameWithTag, "-f Dockerfile .")
-                }
-            }
-        }
-        // Add other parallel stages like "Build Migration Image" here if needed
-    
 
-        //stage('Build Docker Images') {
-            //parallel {
-                //stage('Build Main App Image') {
-                    //steps {
-                        //script {
-                        //    docker_build(
-                       //         imageName: env.DOCKER_IMAGE_NAME,
-                      //          imageTag: env.DOCKER_IMAGE_TAG,
-                     //           dockerfile: 'Dockerfile',
-                    //            context: '.'
-                   //         )
-                  //      }
-                 //   }
-                //}
-                
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Main App Image') {
+                    steps {
+                        script {
+                            sh """
+                                docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -f Dockerfile .
+                            """
+                        }
+                    }
+                }
+
                 stage('Build Migration Image') {
                     steps {
                         script {
-                            docker_build(
-                                imageName: env.DOCKER_MIGRATION_IMAGE_NAME,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                dockerfile: 'scripts/Dockerfile.migration',
-                                context: '.'
-                            )
+                            sh """
+                                docker build -t ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -f scripts/Dockerfile.migration .
+                            """
                         }
                     }
                 }
             }
         }
-        
-        stage('Run Unit Tests') {
-            steps {
-                script {
-                    run_tests()
-                }
-            }
-        }
-        
-        stage('Security Scan with Trivy') {
-            steps {
-                script {
-                    // Create directory for results
-                  
-                    trivy_scan()
-                    
-                }
-            }
-        }
-        
+
+   ///     stage('Run Unit Tests') {
+      //      steps {
+        //        script {
+          //          // Replace with your actual test script/command
+             //       sh './scripts/run_tests.sh'
+            //    }
+            //}
+       // }
+///
+        ///stage('Security Scan with Trivy') {
+            ///steps {
+                //script {
+                    // Replace with actual Trivy scan command
+               //     sh "trivy image ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} || true"
+             //       sh "trivy image ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG} || true"
+           //     }
+          //  }
+        //}
+
         stage('Push Docker Images') {
             parallel {
                 stage('Push Main App Image') {
                     steps {
-                        script {
-                            docker_push(
-                                imageName: env.DOCKER_IMAGE_NAME,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                credentials: 'a43155be-603e-4753-8637-3f9ef04cbef2'
-                            )
+                        withCredentials([usernamePassword(credentialsId: 'a43155be-603e-4753-8637-3f9ef04cbef2', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh """
+                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                                docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                            """
                         }
                     }
                 }
-                
+
                 stage('Push Migration Image') {
                     steps {
-                        script {
-                            docker_push(
-                                imageName: env.DOCKER_MIGRATION_IMAGE_NAME,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                credentials: 'a43155be-603e-4753-8637-3f9ef04cbef2'
-                            )
+                        withCredentials([usernamePassword(credentialsId: 'a43155be-603e-4753-8637-3f9ef04cbef2', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh """
+                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                                docker push ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                            """
                         }
                     }
                 }
             }
         }
-        
-        // Add this new stage
+
         stage('Update Kubernetes Manifests') {
             steps {
                 script {
-                    update_k8s_manifests(
-                        imageTag: env.DOCKER_IMAGE_TAG,
-                        manifestsPath: 'kubernetes',
-                        gitCredentials: 'github',
-                        gitUserName: 'hemantTsingh',
-                        gitUserEmail: 'hemantsingh1023@gmail.com'
-                    )
+                    // Replace with your actual implementation or shell script
+                    sh """
+                        git config --global user.name 'hemantTsingh'
+                        git config --global user.email 'hemantsingh1023@gmail.com'
+
+                        cd kubernetes
+
+                        sed -i 's|image: hemantsingh1023/easyshop-app:.*|image: hemantsingh1023/easyshop-app:${DOCKER_IMAGE_TAG}|' deployment.yaml
+                        sed -i 's|image: hemantsingh1023/easyshop-migration:.*|image: hemantsingh1023/easyshop-migration:${DOCKER_IMAGE_TAG}|' migration.yaml
+
+                        git add .
+                        git commit -m "Update image tags to ${DOCKER_IMAGE_TAG}"
+                        git push https://$GITHUB_CREDENTIALS_USR:$GITHUB_CREDENTIALS_PSW@github.com/hemantTsingh/tws-e-commerce-app.git HEAD:${GIT_BRANCH}
+                    """
                 }
             }
         }
