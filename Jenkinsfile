@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'worker-root'
+        label 'worker-root' }
     
     environment {
         // Update the main app image name to match the deployment file
