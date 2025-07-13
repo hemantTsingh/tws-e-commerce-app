@@ -119,7 +119,7 @@ stage('Deploy to Kubernetes') {
     steps {
         withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
             withEnv(["KUBECONFIG=$KUBECONFIG_FILE"]) {
-                sh 'kubectl apply -f kubernetes/'
+                sh 'kubectl apply -f kubernetes/ --exclude=kubernetes/00-cluster-issuer.yml'
             }
         }
     } 
