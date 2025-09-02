@@ -8,7 +8,7 @@ pipeline {
         DOCKER_MIGRATION_IMAGE_NAME = 'hemantsingh1023/easyshop-migration'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         GITHUB_CREDENTIALS = credentials('github')
-        GIT_BRANCH = "master"
+        GIT_BRANCH = "main"
     }
 
     stages {
@@ -73,7 +73,7 @@ pipeline {
             parallel {
                 stage('Push Main App Image') {
                     steps {
-                        withCredentials([usernamePassword(credentialsId: 'a43155be-603e-4753-8637-3f9ef04cbef2', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                             sh """
                                 echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                                 docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
