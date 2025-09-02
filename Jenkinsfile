@@ -8,7 +8,7 @@ pipeline {
         DOCKER_MIGRATION_IMAGE_NAME = 'hemantsingh1023/easyshop-migration'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         GITHUB_CREDENTIALS = credentials('github')
-        GIT_BRANCH = "main"
+        GIT_BRANCH = "master"
     }
 
     stages {
