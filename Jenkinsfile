@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'worker-root'
+        label 'worker'
     }
 
     environment {
