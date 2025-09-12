@@ -7,7 +7,6 @@ pipeline {
         DOCKER_IMAGE_NAME = 'hemantsingh1023/easyshop-app'
         DOCKER_MIGRATION_IMAGE_NAME = 'hemantsingh1023/easyshop-migration'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
-        GITHUB_CREDENTIALS = credentials('github')
         GIT_BRANCH = "master"
     }
 
@@ -30,65 +29,45 @@ pipeline {
             parallel {
                 stage('Build Main App Image') {
                     steps {
-                        script {
-                            sh """
-                                docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -f Dockerfile .
-                            """
-                        }
+                        sh "docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -f Dockerfile ."
                     }
                 }
 
                 stage('Build Migration Image') {
                     steps {
-                        script {
-                            sh """
-                                docker build -t ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -f scripts/Dockerfile.migration .
-                            """
-                        }
+                        sh "docker build -t ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -f scripts/Dockerfile.migration ."
                     }
                 }
             }
         }
 
-   ///     stage('Run Unit Tests') {
-      //      steps {
-        //        script {
-          //          // Replace with your actual test script/command
-             //       sh './scripts/run_tests.sh'
-            //    }
-            //}
-       // }
-///
-        ///stage('Security Scan with Trivy') {
-            ///steps {
-                //script {
-                    // Replace with actual Trivy scan command
-               //     sh "trivy image ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} || true"
-             //       sh "trivy image ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG} || true"
-           //     }
-          //  }
-        //}
+        stage('Security Scan with Trivy') {
+            steps {
+                sh "trivy image ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} || true"
+                sh "trivy image ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG} || true"
+            }
+        }
 
         stage('Push Docker Images') {
             parallel {
                 stage('Push Main App Image') {
                     steps {
                         withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                            sh """
-                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            sh '''
+                                echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
                                 docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                            """
+                            '''
                         }
                     }
                 }
 
                 stage('Push Migration Image') {
                     steps {
-                        withCredentials([usernamePassword(credentialsId: 'a43155be-603e-4753-8637-3f9ef04cbef2', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                            sh """
-                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh '''
+                                echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
                                 docker push ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                            """
+                            '''
                         }
                     }
                 }
@@ -96,35 +75,35 @@ pipeline {
         }
 
         stage('Update Kubernetes Manifests') {
-    steps {
-        script {
-           sh '''
-    git config --global user.name 'hemantTsingh'
-    git config --global user.email 'hemantsingh1023@gmail.com'
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        git config --global user.name 'hemantTsingh'
+                        git config --global user.email 'hemantsingh1023@gmail.com'
 
-    sed -i 's|image: .*easyshop-app:.*|image: hemantsingh1023/easyshop-app:'"$DOCKER_IMAGE_TAG"'|' kubernetes/08-easyshop-deployment.yaml
-    sed -i 's|image: .*easyshop-migration:.*|image: hemantsingh1023/easyshop-migration:'"$DOCKER_IMAGE_TAG"'|' kubernetes/12-migration-job.yaml
+                        sed -i 's|image: .*easyshop-app:.*|image: hemantsingh1023/easyshop-app:'"$DOCKER_IMAGE_TAG"'|' kubernetes/08-easyshop-deployment.yaml
+                        
 
-    git add kubernetes/08-easyshop-deployment.yaml kubernetes/12-migration-job.yaml
-    git diff --cached --quiet || git commit -m "Update image tags to ${DOCKER_IMAGE_TAG}"
-    git push https://$GITHUB_CREDENTIALS_USR:$GITHUB_CREDENTIALS_PSW@github.com/hemantTsingh/tws-e-commerce-app.git HEAD:${GIT_BRANCH}
-'''
-
+                        git add kubernetes/08-easyshop-deployment.yaml 
+                        git diff --cached --quiet || git commit -m "Update image tags to ${DOCKER_IMAGE_TAG}"
+                        git push https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/hemantTsingh/tws-e-commerce-app.git HEAD:${GIT_BRANCH}
+                    '''
                 }
             }
         }
 
-
-stage('Deploy to Kubernetes') {
-    steps {
-        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
-            withEnv(["KUBECONFIG=$KUBECONFIG_FILE"]) {
-                sh 'kubectl apply -f kubernetes/ --exclude=kubernetes/00-cluster-issuer.yml'
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                    withEnv(["KUBECONFIG=$KUBECONFIG_FILE"]) {
+                        sh '''
+                            for file in $(ls kubernetes/*.yaml); do
+    kubectl apply -f "$file"
+done
+                        '''
+                    }
+                }
             }
         }
-    } 
-}
-
-
     }
 }
