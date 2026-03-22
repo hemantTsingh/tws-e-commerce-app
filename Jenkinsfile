@@ -1,106 +1,51 @@
 pipeline {
-    agent any 
+    agent any
 
     environment {
-        DOCKER_IMAGE_NAME = 'hemantsingh1023/easyshop-app'
-        DOCKER_MIGRATION_IMAGE_NAME = 'hemantsingh1023/easyshop-migration'
-        DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
-        GIT_BRANCH = "master"
+        DOCKER_IMAGE = 'hemantsingh1023/easyshop-app'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+        DOCKERHUB_USER = 'hemantsingh1023'
+        DOCKERHUB_PASS = 'dckr_pat_MrWFMAN9gb0oPLrsJ2jdvL9uy2w'
     }
 
     stages {
-        stage('Cleanup Workspace') {
+        stage('Cleanup') {
             steps {
                 cleanWs()
             }
         }
 
-        stage('Clone Repository') {
+        stage('Clone') {
             steps {
-                git url: 'https://github.com/hemantTsingh/tws-e-commerce-app.git',
-                    branch: "${env.GIT_BRANCH}",
-                    credentialsId: 'github'
+                git url: 'https://github.com/hemantTsingh/tws-e-commerce-app.git', branch: 'master'
             }
         }
 
-        stage('Build Docker Images') {
-            parallel {
-                stage('Build Main App Image') {
-                    steps {
-                        sh "docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -f Dockerfile ."
-                    }
-                }
-
-                stage('Build Migration Image') {
-                    steps {
-                        sh "docker build -t ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -f scripts/Dockerfile.migration ."
-                    }
-                }
-            }
-        }
-
-        stage('Security Scan with Trivy') {
+        stage('Build') {
             steps {
-                sh "trivy image ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} || true"
-                sh "trivy image ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG} || true"
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -t ${DOCKER_IMAGE}:latest ."
             }
         }
 
-        stage('Push Docker Images') {
-            parallel {
-                stage('Push Main App Image') {
-                    steps {
-                        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                            sh '''
-                                echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                                docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                            '''
-                        }
-                    }
-                }
-
-                stage('Push Migration Image') {
-                    steps {
-                        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                            sh '''
-                                echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                                docker push ${DOCKER_MIGRATION_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Update Kubernetes Manifests') {
+        stage('Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
-                    sh '''
-                        git config --global user.name 'hemantTsingh'
-                        git config --global user.email 'hemantsingh1023@gmail.com'
-
-                        sed -i 's|image: .*easyshop-app:.*|image: hemantsingh1023/easyshop-app:'"$DOCKER_IMAGE_TAG"'|' kubernetes/08-easyshop-deployment.yaml
-                        
-
-                        git add kubernetes/08-easyshop-deployment.yaml 
-                        git diff --cached --quiet || git commit -m "Update image tags to ${DOCKER_IMAGE_TAG}"
-                        git push https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/hemantTsingh/tws-e-commerce-app.git HEAD:${GIT_BRANCH}
-                    '''
-                }
+                sh '''
+                    echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin
+                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    docker push ${DOCKER_IMAGE}:latest
+                '''
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Update Manifest') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
-                    withEnv(["KUBECONFIG=$KUBECONFIG_FILE"]) {
-                        sh '''
-                            for file in $(ls kubernetes/*.yaml); do
-    kubectl apply -f "$file"
-done
-                        '''
-                    }
-                }
+                sh "sed -i 's|image: hemantsingh1023/easyshop-app:.*|image: hemantsingh1023/easyshop-app:${DOCKER_TAG}|' kubernetes/08-easyshop-deployment.yaml"
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'kubectl apply -f kubernetes/'
             }
         }
     }
